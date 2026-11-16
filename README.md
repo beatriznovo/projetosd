@@ -24,7 +24,7 @@ Resultado da verificação:
 - **Senha correta:** todos os LEDs verdes (`LEDG[8:0]`) acesos por 5 s, depois o sistema volta ao início.
 - **Senha incorreta:** todos os LEDs vermelhos (`LEDR[17:0]`) acesos por 3 s, depois o sistema volta ao início.
 
-A senha padrão é **1234** e é definida pelo parâmetro `SENHA` em `rtl/safecrack_top.sv`.
+A senha padrão é **1234**. Ela é definida em `rtl/safecrack_top.sv` (`localparam SENHA`) e repassada ao parâmetro `SENHA` de `safecrack_fsm`. Para trocá-la, altere esse valor e recompile.
 
 ---
 
@@ -33,7 +33,8 @@ A senha padrão é **1234** e é definida pelo parâmetro `SENHA` em `rtl/safecr
 ```
 rtl/
   safecrack_top.sv    módulo de topo, com os nomes de pinos da DE2-115
-  safecrack_fsm.sv    FSM, armazenamento dos dígitos, comparação e temporização
+  safecrack_fsm.sv    FSM, armazenamento dos dígitos, comparação, temporização
+                      e as 4 instâncias de btn_sync
   btn_sync.sv         sincronizador e detector de borda dos botões
   seg7.sv             decodificador de 7 segmentos
 sim/
@@ -63,7 +64,7 @@ docs/
 | KEY[1] confirma e avança | Cada estado `DIGITOn` passa para `DIGITO(n+1)` no pulso de `KEY[1]`. No `DIGITO3` o pulso dispara a verificação. |
 | KEY[0] reset em qualquer estado | O reset tem prioridade sobre todo o resto, em qualquer estado, e zera os dígitos e o contador. |
 | Sem retorno a dígito confirmado | A FSM só tem transições para frente. Voltar exige o reset. |
-| Um pressionamento = uma ação | `btn_sync` gera um pulso de um ciclo só na borda de descida do botão. Segurar o botão não repete a ação. |
+| Um pressionamento = uma ação | `btn_sync` gera um pulso de um ciclo no instante em que o `KEY` é apertado (borda de descida do `KEY`, que dentro do `btn_sync`, depois da inversão, aparece como borda de subida). Segurar o botão não repete a ação. |
 | Verificação da senha | Comparação `dig == SENHA` no momento da confirmação do quarto dígito. |
 | Senha correta: LEDs verdes por 5 s | Estado `ABERTO`, com contador de `5 * CLK_HZ` ciclos. |
 | Senha incorreta: LED vermelho por 3 s | Estado `ERRO`, com contador de `3 * CLK_HZ` ciclos. |
@@ -75,12 +76,14 @@ docs/
 ## Arquitetura
 
 ```
-KEY[3:0] ──► btn_sync x4 ──► pulsos (inc, dec, ok) e nível (rst) ──► safecrack_fsm ──► dig0..dig3, idx, LEDs
-                                                                          │
-                                                       safecrack_top ──► seg7 x5 ──► HEX0..HEX4
+safecrack_top
+├── safecrack_fsm
+│   ├── btn_sync x4   KEY[3:0] -> pulsos (inc, dec, ok) e nível (rst)
+│   └── FSM, dígitos e contador -> dig0..dig3, idx, LEDG, LEDR
+└── seg7 x5           dig0..dig3 e idx -> HEX3..HEX0 e HEX4
 ```
 
-**`btn_sync`:** os botões são assíncronos em relação ao clock, então passam por dois flip-flops (sincronizador) antes de serem usados. Depois, um terceiro flip-flop guarda o valor anterior, e `pulse = atual & ~anterior` vale 1 durante um único ciclo, só quando o botão acabou de ser apertado. A entrada é invertida porque os botões são ativos em nível baixo.
+**`btn_sync`:** os botões são assíncronos em relação ao clock, então passam por dois flip-flops (sincronizador) antes de serem usados. A entrada é invertida porque os botões são ativos em nível baixo, e por isso a borda de descida do `KEY` aparece como borda de subida dentro do módulo. Um terceiro flip-flop guarda o valor anterior, e `pulse = atual & ~anterior` vale 1 durante um único ciclo, só quando o botão acabou de ser apertado. As quatro instâncias ficam dentro de `safecrack_fsm`.
 
 **`safecrack_fsm`:** guarda o estado, os quatro dígitos e o contador de tempo.
 - O próximo estado e o próximo valor do contador são calculados em um bloco combinacional.
@@ -94,28 +97,6 @@ KEY[3:0] ──► btn_sync x4 ──► pulsos (inc, dec, ok) e nível (rst) �
 ## Diagrama de estados
 
 ![Diagrama de estados](docs/diagrama_estados.png)
-
-<details>
-<summary>Versão em Mermaid (o GitHub desenha sozinho)</summary>
-
-```mermaid
-stateDiagram-v2
-    [*] --> DIGITO0
-    DIGITO0 --> DIGITO1: KEY1
-    DIGITO1 --> DIGITO2: KEY1
-    DIGITO2 --> DIGITO3: KEY1
-    DIGITO3 --> ABERTO: KEY1 e senha correta
-    DIGITO3 --> ERRO: KEY1 e senha incorreta
-    ABERTO --> DIGITO0: fim dos 5 s
-    ERRO --> DIGITO0: fim dos 3 s
-    note right of DIGITO0
-        KEY0 (reset) leva qualquer estado a DIGITO0
-        KEY2 e KEY3 alteram o digito ativo
-        sem mudar de estado
-    end note
-```
-
-</details>
 
 | Estado | Dígito ativo (HEX4) | LEDs | Ações |
 |---|---|---|---|
@@ -157,7 +138,7 @@ Resultado: **43 verificações, todas passando.**
 | T7 | senha correta: LEDs verdes por exatamente 5 s, retorno ao início |
 | T8 | reset durante o feedback apaga os LEDs na hora |
 | T9 | uma tentativa errada seguida de uma correta |
-| T10 | botões apertados ao mesmo tempo (KEY[2]+KEY[3] e KEY[1]+KEY[2]) |
+| T10 | botões no mesmo ciclo de clock (KEY[2]+KEY[3] e KEY[1]+KEY[2]), caso extremo |
 | T11 | reset durante o erro apaga os LEDs vermelhos na hora |
 | T12 | botões ignorados durante o feedback e contagem de 5 s não alterada |
 
@@ -183,10 +164,10 @@ São digitados 1, 2, 3 e 4. A FSM vai para `ABERTO` e os LEDs verdes ficam aceso
 
 ![Senha correta](docs/waveform_senha_correta.png)
 
-### Botões apertados ao mesmo tempo
-KEY[2] e KEY[3] juntos são ignorados e o dígito não muda. KEY[1] e KEY[2] juntos só confirmam: a FSM avança para o segundo dígito e o valor do primeiro continua 0. (O estado volta a `D0` no fim da janela porque o teste seguinte aperta o reset.)
+### Botões no mesmo ciclo de clock (caso extremo)
+O testbench força dois botões no mesmo ciclo de clock. KEY[2] e KEY[3] juntos são ignorados e o dígito não muda. KEY[1] e KEY[2] juntos só confirmam: a FSM avança para o segundo dígito e o valor do primeiro continua 0.
 
-![Botões simultâneos](docs/waveform_botoes_simultaneos.png)
+![Botões no mesmo ciclo](docs/waveform_botoes_simultaneos.png)
 
 ---
 
@@ -196,9 +177,11 @@ KEY[2] e KEY[3] juntos são ignorados e o dígito não muda. KEY[1] e KEY[2] jun
 2. Compile (Processing > Start Compilation).
 3. Conecte a DE2-115 por USB, abra o Programmer e grave o arquivo `.sof` gerado.
 
-Pinos usados (conforme o manual da DE2-115): `CLOCK_50` em `PIN_Y2`; `KEY[0..3]` em `PIN_M23`, `PIN_M21`, `PIN_N21`, `PIN_R24`; `HEX0` a `HEX4`, `LEDG[8:0]` e `LEDR[17:0]` conforme `quartus/safecrack.qsf`.
+Os pinos (`CLOCK_50`, `KEY`, `HEX0` a `HEX4`, `LEDG` e `LEDR`) estão atribuídos em `quartus/safecrack.qsf`, conforme o manual da DE2-115.
 
-### Teste na placa
+### Roteiro de teste na placa
+
+Passos para conferir o funcionamento na DE2-115:
 
 - [ ] Ao ligar, displays em 0000 e HEX4 mostrando 1
 - [ ] KEY[2] e KEY[3] alteram o dígito ativo, com wrap-around
@@ -216,7 +199,7 @@ Pinos usados (conforme o manual da DE2-115): `CLOCK_50` em `PIN_Y2`; `KEY[0..3]`
 - **HEX4 apaga durante o feedback**, porque nenhum dígito está sendo editado.
 - **Os dígitos continuam visíveis durante `ABERTO` e `ERRO`** e só voltam a 0 ao retornar ao estado inicial, como pede o enunciado.
 - **Todos os LEDs vermelhos acendem no erro** (o enunciado diz "o(s) LED(s) vermelho(s)").
-- **Botões simultâneos:** se KEY[1] chegar junto com KEY[2] ou KEY[3], só a confirmação vale. Se KEY[2] e KEY[3] chegarem juntos, os dois são ignorados.
+- **Botões no mesmo ciclo de clock (caso extremo):** se KEY[1] chegar no mesmo ciclo que KEY[2] ou KEY[3], só a confirmação vale; se KEY[2] e KEY[3] chegarem juntos, os dois são ignorados. Na placa, dois botões apertados "juntos" chegam com milissegundos de diferença (milhões de ciclos de 50 MHz) e viram duas ações em sequência. Essa regra só entra em ação se os pulsos caírem no mesmo ciclo de 20 ns, o que na prática só acontece na simulação (teste T10).
 - **Sem verificação separada:** a comparação é feita direto na transição de `DIGITO3`, porque o quarto dígito já está no valor final quando KEY[1] é apertado.
 
 ---
@@ -224,7 +207,4 @@ Pinos usados (conforme o manual da DE2-115): `CLOCK_50` em `PIN_Y2`; `KEY[0..3]`
 ## Known issues
 
 - **Debounce:** o código não faz debounce por software. Segundo o manual da DE2-115, os push buttons já são filtrados por circuito Schmitt trigger na própria placa. Se algum botão apresentar duplo clique na prática, o `btn_sync` é o lugar para incluir um filtro por contador.
-- **Reset com atraso de poucos ciclos:** o reset passa pelo sincronizador e é aplicado em cerca de 2 ciclos de clock (40 ns). Não é perceptível para o usuário.
 - **Simulação em escala reduzida:** a simulação usa `CLK_HZ = 100` para não precisar simular 250 milhões de ciclos. A temporização em 50 MHz depende da mesma conta (`5 * CLK_HZ`), mas só pode ser confirmada na placa.
-- **Botão do reset segurado:** enquanto KEY[0] estiver apertado, a FSM fica presa em `DIGITO0` e ignora os outros botões. Ao soltar, o uso volta ao normal.
-- **Senha fixa em tempo de compilação:** para trocar a senha é preciso alterar o parâmetro `SENHA` e recompilar.
