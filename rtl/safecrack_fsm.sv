@@ -1,8 +1,8 @@
 // safecrack_fsm: logica do cofre
-// guarda os 4 digitos, controla qual esta ativo, verifica a senha e conta o tempo do feedback
+
 module safecrack_fsm #(
     parameter logic [15:0] SENHA  = 16'h1234,    // senha correta (um digito por grupo de 4 bits)
-    parameter int          CLK_HZ = 50_000_000   // frequencia do clock, usada para contar segundos
+    parameter int          CLK_HZ = 50_000_000   
 )(
     input  logic        clk,
     input  logic [3:0]  key,        // KEY[3:0] da placa (ativos em nivel baixo)
@@ -44,7 +44,7 @@ module safecrack_fsm #(
     logic ok_pls;
 
     // um btn_sync por botao: o reset usa o nivel (vale enquanto apertado),
-    // os outros usam o pulso (uma acao por aperto)
+
     btn_sync u_rst (.clk(clk), .btn_n(key[0]), .level(rst_lvl), .pulse());
     btn_sync u_ok  (.clk(clk), .btn_n(key[1]), .level(),        .pulse(ok_pls));
     btn_sync u_inc (.clk(clk), .btn_n(key[2]), .level(),        .pulse(inc_pls));
@@ -77,7 +77,7 @@ module safecrack_fsm #(
         end
         else begin
             unique case (state)
-                // confirmar avanca sempre para o digito seguinte, nunca volta
+                
                 DIGITO0: if (ok_pls) next_state = DIGITO1;
                 DIGITO1: if (ok_pls) next_state = DIGITO2;
                 DIGITO2: if (ok_pls) next_state = DIGITO3;
