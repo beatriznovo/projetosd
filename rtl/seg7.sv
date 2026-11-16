@@ -1,5 +1,5 @@
 // seg7: converte um digito de 0 a 9 nos 7 segmentos do display da DE2-115
-// os displays da placa sao ativos em nivel baixo: 0 acende o segmento, 1 apaga
+
 // ordem dos bits: hex[6:0] = {g, f, e, d, c, b, a}
 module seg7 (
     input  logic [3:0] value,
