@@ -1,6 +1,6 @@
 // safecrack_top: modulo de topo, liga a FSM aos pinos da DE2-115
 module safecrack_top #(
-    parameter int CLK_HZ = 50_000_000   // clock da placa; a simulacao usa um valor menor
+    parameter int CLK_HZ = 50_000_000   
 )(
     input  logic        CLOCK_50,
     input  logic [3:0]  KEY,
