@@ -48,7 +48,6 @@ quartus/
 docs/
   diagrama_estados.png  diagrama de estados
   waveform_*.png        waveforms da simulação
-  roteiro_video.md      sugestão de divisão de falas para o vídeo
 ```
 
 ---
