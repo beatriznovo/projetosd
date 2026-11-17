@@ -147,27 +147,27 @@ Nas imagens, `D0` a `D3` são os estados `DIGITO0` a `DIGITO3`, e o tempo está 
 ### Edição do dígito e wrap-around
 Cada pulso baixo em KEY[2] soma 1, e em KEY[3] subtrai 1. O dígito vai de 0 para 9 ao decrementar e volta de 9 para 0 ao incrementar.
 
-![Edição do dígito](docs/waveform_edicao.png)
+![Edição do dígito](docs/modelsim_edicao.png)
 
 ### Botão segurado
 KEY[2] fica em nível baixo por 60 ciclos e o dígito muda apenas uma vez. Depois, KEY[3] é apertado e o dígito volta a 0.
 
-![Botão segurado](docs/waveform_botao_segurado.png)
+![Botão segurado](docs/modelsim_botao_segurado.png)
 
 ### Senha incorreta
 São digitados 1, 2, 3 e 5. Ao confirmar o quarto dígito, a FSM vai para `ERRO` e os LEDs vermelhos ficam acesos por 300 ciclos, que equivalem aos 3 s. Os dígitos ficam visíveis durante o erro e são zerados quando a FSM volta ao início.
 
-![Senha incorreta](docs/waveform_senha_errada.png)
+![Senha incorreta](docs/modelsim_senha_errada.png)
 
 ### Senha correta
 São digitados 1, 2, 3 e 4. A FSM vai para `ABERTO` e os LEDs verdes ficam acesos por 500 ciclos, que equivalem aos 5 s.
 
-![Senha correta](docs/waveform_senha_correta.png)
+![Senha correta](docs/modelsim_senha_correta.png)
 
 ### Botões no mesmo ciclo de clock (caso extremo)
 O testbench força dois botões no mesmo ciclo de clock. KEY[2] e KEY[3] juntos são ignorados e o dígito não muda. KEY[1] e KEY[2] juntos só confirmam: a FSM avança para o segundo dígito e o valor do primeiro continua 0.
 
-![Botões no mesmo ciclo](docs/waveform_botoes_simultaneos.png)
+![Botões no mesmo ciclo](docs/modelsim_botoes_simultaneos.png)
 
 ---
 
