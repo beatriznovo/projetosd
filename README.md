@@ -6,7 +6,7 @@ Cofre digital com seleção de dígitos por push buttons e displays de 7 segment
 
 **Grupo:** Luiza Severo, Beatriz Novo, Clara Galamba, Beatriz Holanda e Maria Lucia Fragoso
 
-**Vídeo de apresentação:** [COLE AQUI O LINK DO VÍDEO]
+**Vídeo de apresentação:** https://drive.google.com/file/d/1wB21s7F75JK2Ixm8QLGFrXnFgeMLx4pt/view?usp=sharing
 
 ---
 
